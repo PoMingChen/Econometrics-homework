@@ -37,6 +37,15 @@ labordata <- read_csv("http://people.stern.nyu.edu/wgreene/Econometrics/cornwell
 將labordata只留下第7年的資料
 
 ```{r}
+library(dplyr)
+library(magrittr)
+library(sandwich)
+library(lmtest)
+library(stargazer)
+library(AER)
+
+labordata %>% filter(YEAR==7) -> labordata7
+attach(labordata7)
 
 ```
 
@@ -46,7 +55,8 @@ $$wks_{i}=\beta_0+\beta_1 lwage_{i}+\epsilon_i$$
 
 請使用plot()畫出橫軸為每週工時（WKS）與縱軸為取對數後薪資（LWAGE, 後往直接稱呼「薪資」）的離散圖。
 ```{r}
-
+  plot(WKS,LWAGE,type="p",xlab="每週工時", ylab="薪資") #<<<<<<<<<<這地方老師要我們畫的圖根上面的迴歸式不搭阿>>>>>>>
+  
 ```
 
 ### (3)
@@ -54,6 +64,10 @@ $$wks_{i}=\beta_0+\beta_1 lwage_{i}+\epsilon_i$$
 [請不要使用任何程式或數字計算，單純文字故事邏輯]
 
 ```
+就現實生活中的常理推論，參與工會的勞工可藉由工會力量向雇主爭取較佳的勞動條件，因而可能的影響有
+1.在相同的工資給付下，可以有較低的工作時數。或是 2.相同的工作時數下，有較高的工資
+就1.而言，參加工會與否與工作時數為負相關，而2.造成參加工會與否與工資為正相關
+則使得缺漏公會這個變數會造成我們估計的工資係數被低估
 
 ```
 
@@ -61,8 +75,11 @@ $$wks_{i}=\beta_0+\beta_1 lwage_{i}+\epsilon_i$$
 在不做迴歸下，請用union分組計算lwage與wks的平均，並用數字結果來支持你在(c)小題的擔心。
 
 ```{r}
+labordata7 %>% group_by(UNION) %>%
+  summarise("Average LWAGE"=mean(LWAGE), "Average WKS"=mean(WKS))
 
 ```
+從分組平均可以看出，參加工會的勞工平均薪資與未參加工會的勞工幾乎沒有差異(差距約3%)，但平均每周工時則低了近2小時，可以看出參加工會與否是明顯影響每週工時的因素之一，並且在控制工會這個變數後，薪資對於工時影響程度非常小。
 
 ### (5)
 我們最後考慮如下的複迴歸勞動供給函數
@@ -70,20 +87,31 @@ $$wks_{i}=\beta_0+\beta_1 lwage_{i} + \beta_2 ed_{i} +\beta_3 union_{i} +\beta_4
 請用『純文字說明』(不要寫程式，不要算任何數字)：為什麼要再放教育水準及性別二個控制變數？
 
 ```
+由常理判斷，教育水準與性別均有可能影響在相同的薪資下，每週工時的長短，
+教育水準很可能影響在相同工時下的薪資水準，而女性也可能因為其社會期待而較可能從事某些行業，進而影響其工時與薪資個的關係
+因此在控制這兩個變數下，我們才有可能避免遺漏重要變數的偏誤
 
 ```
 
 ### (6)
 同時OLS估計簡單迴歸和複迴歸下的勞動供給，並用stargarzer呈現估計結果（請設定type="html"）。
 
-```{r}
+```{r, results='asis'}
 
+  lm(WKS~LWAGE) -> ols1
+  lm(WKS~LWAGE+ED+UNION + FEM) -> ols2
+
+coeftest(ols1, vcov. = vcovHC, type="HC1") -> ols1_coeftest
+coeftest(ols2, vcov. = vcovHC, type="HC1") -> ols2_coeftest
+
+stargazer(ols1, ols2 ,type="html")
 ```
 
 ### (7)
 複迴歸模型估計下，LWAGE的係數要如何詮譯？顯不顯著？
 
 ```
+就估計的迴歸係數Beta_1而言，薪資每增加0.538個百分點，每週工時將增加1小時，但就其t值及p值可以看出，估計的結果並不顯著，這個估計並不可靠。
 
 ```
 
@@ -91,6 +119,9 @@ $$wks_{i}=\beta_0+\beta_1 lwage_{i} + \beta_2 ed_{i} +\beta_3 union_{i} +\beta_4
 找出一個使複迴歸模型在控制變數下依然不符合條件性獨立的故事（必需牽扯到labordata資料不會有的變數，所以只能純文字故事）。
 
 ```
+在我們的複迴歸模型中，已經控制了教育、性別、工會三個變數，以討論薪資對於工時的效應，則在最小平方法的架構下，截距項應該已經扣除這四個變數的效果，而僅有固定的截距性質。但是在這個模型中，由於每個資料點是由特定的供給與需求所決定的，因此即便是控制了薪資，想要估計的反應變數(工時供給)仍然會受到薪資的影響
+
+例如在不同的總體環境下，受到景氣的影響，廠商願意購買的勞動量即願意給付的薪資會形成不同的需求線，這使得複回歸模型中，即使控制了這些變數，仍然無法使截距項與我們要探討的效應變數獨立。
 
 ```
 
@@ -103,6 +134,10 @@ $$wks_{i}=\beta_0+\beta_1 lwage_{i} + \beta_2 ed_{i} +\beta_3 union_{i} +\beta_4
 在勞動市場中，產業別不同其對勞動力的需求也不一樣。另外，不同地點的勞動需求狀況也不同。使用文字邏輯說明「產業別」、勞動者「居住地」可能是合理工具變數的理由。
 
 ```
+在推導勞動供給線時，我們假定勞動供給量只與薪資有關，勞工在不同產業間是同質的，在不同的地點仍然只受到薪資影響供給量。
+工具變數的選擇方式為滿足獨立條件與排除條件
+[產業別]這個變數僅影響需求線而不影響供給線，因此[產業別]與供給線的截距項(扣除工資影響後的供給量)無關，且仍然與工資有關，是合理的工具變數
+同理，[居住地]也只與需求有關，因此獨立於供給線的截距項(扣除工資影響後的供給量)，而仍然與工資有關。
 
 ```
 
@@ -110,20 +145,48 @@ $$wks_{i}=\beta_0+\beta_1 lwage_{i} + \beta_2 ed_{i} +\beta_3 union_{i} +\beta_4
 使用工具變數法及產業別（ind）當工具變數，估計複迴歸模型下的$\beta_1$係數，並進行工具變數合理性的相關檢定。
 
 ```{r}
+tsls_1iv <- ivreg(WKS ~ LWAGE + ED + UNION + FEM | ED + UNION + FEM + IND , data=labordata7 ) 
+
+sandwich_HC1<-function(x,adjust=TRUE){
+  sandwich(x,adjust=adjust)
+}
+summary(tsls_1iv, vcov = sandwich_HC1, diagnostics = TRUE, df=Inf)
 
 ```
+
+從檢定結果的p-value可以看出
+Weak Instrument檢定中也拒絕弱IV的H0假設
+Hausman 檢定也不拒絕H0
+Sargan檢定則因為變數不足而沒有進行
 
 ### (11) 
 使用工具變數法, 同時使用ind及smsa當工具變數，估計複迴歸模型下的$\beta_1$係數，並進行工具變數合理性的相關檢定。
 
 ```{r}
+tsls_2iv <- ivreg(WKS ~ LWAGE + ED + UNION + FEM | ED + UNION + FEM + IND + SMSA , data=labordata7 ) 
+
+sandwich_HC1<-function(x,adjust=TRUE){
+  sandwich(x,adjust=adjust)
+}
+summary(tsls_2iv, vcov = sandwich_HC1, diagnostics = TRUE, df=Inf)
 
 ```
+從檢定結果的p-value可以看出
+Sargan 檢定不拒絕H0，滿足排除條件
+Weak Instrument檢定中也拒絕弱IV的H0
+Hausman 檢定也不拒絕H0
 
 ### (12)
 將簡單迴歸、複迴歸、一個工具變數、二個工具變數的四種估算結果（含應有的檢定），用stargazer產生「一張」報表同時呈現（請設定type="html"）。
 
-```{r}
+```{r, results='asis'}
+stargazer(ols1, ols2, tsls_1iv,tsls_2iv,type="html",
+          column.labels = c("","","one IV", "two IVs"),
+          add.lines = list(c("TSLS tests p-value", "","","",""),
+                           c("Q1: Sargan","","", "NA","0.363"),
+                           c("Q2: Weak instruments","","", "0.0006","1.12e-10"),
+                           c("Q3: Wu-Hausman","","", "0.6005","0.567")
+                           ))
 
 ```
 
@@ -138,6 +201,9 @@ $$wks_{i}=\beta_0+\beta_1 lwage_{i} + \beta_2 ed_{i} +\beta_3 union_{i} +\beta_4
 文章問的因果效應問句是什麼？（盡量一言以敝之）
 
 ```
+就其文章標題而言，其因果效應問句是「強迫企業揭露性別對待遇的影響將有助於促進企業思考其聘僱上的性別差異」則所談論的效應應該是要求其揭露與否，造成的影響是企業對於聘僱上的性別差異的改善
+
+就文章內容而言，其假設的命題是「薪資差異是因為性別而造成的」，則效應關係是性別影響薪資待遇
 
 ```
 
@@ -145,5 +211,7 @@ $$wks_{i}=\beta_0+\beta_1 lwage_{i} + \beta_2 ed_{i} +\beta_3 union_{i} +\beta_4
 找出文章中所列舉可造成OVB（omitted variable bias）的應控制變數，並說明它會造成OVB的「兩」面向原因（缺一不可）。
 
 ```
+以文章內容的命題而言，文章內提到許多
+
 
 ```
