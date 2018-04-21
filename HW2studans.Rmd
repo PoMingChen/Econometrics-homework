@@ -1,31 +1,18 @@
 ---
 title: "作業2"
-params:
-  group: 4
-  id:
-  - 410373092
-  - 310356001
-  name:
-  - 陳柏銘
-  - 蔡沛吟
 output:
-  html_notebook:
-    df_print: paged
   html_document:
     df_print: paged
 ---
-請依狀況更改上面的name,id及group（分別代表組員姓名，學號及組號），但請「勿」更改下面姓名、學號、組號三行的設定。  
-
-***
-
-姓名：`r params$name`  
-學號：`r params$id`  
-組號：`r params$group`  
-
-***
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,warning=F,message=F)
+library(dplyr)
+library(AER)
+library(magrittr)
+library(sandwich)
+library(lmtest)
+library(stargazer)
 ```
 
 # 勞動市場
@@ -35,18 +22,6 @@ knitr::opts_chunk$set(echo = TRUE,warning=F,message=F)
 ```{r}
 library(readr)
 labordata <- read_csv("http://people.stern.nyu.edu/wgreene/Econometrics/cornwell&rupert.csv")
-# EXP = work experience 
-# WKS = weeks worked
-# OCC = occupation, 1 if blue collar, 
-# IND = 1 if manufacturing industry
-# SOUTH = 1 if resides in south
-# SMSA = 1 if resides in a city (SMSA)
-# MS = 1 if married
-# FEM = 1 if female
-# UNION = 1 if wage set by unioin contract
-# ED = years of education
-# BLK = 1 if individual is black
-# LWAGE = log of wage
 ```
 
 ## 勞動供給
@@ -57,18 +32,18 @@ labordata <- read_csv("http://people.stern.nyu.edu/wgreene/Econometrics/cornwell
 ```{r}
 library(dplyr)
 library(magrittr)
-labordata %<>% filter(YEAR==7)
-labordata
+library(AER)
+library(stargazer)
+labordata %<>% dplyr::filter(YEAR == 7)
 ```
 
-### (2) 
+### (2)
 我們想要估計薪資對工時的影響（即勞動供給），考慮如下的勞動供給函數
 $$wks_{i}=\beta_0+\beta_1 lwage_{i}+\epsilon_i$$
 
 請使用plot()畫出橫軸為每週工時（WKS）與縱軸為取對數後薪資（LWAGE, 後往直接稱呼「薪資」）的離散圖。
 ```{r}
-#plot(labordata$WKS, labordata$LWAGE, xlab = "WKS", ylab = "LWAGE")
-plot(labordata$LWAGE, labordata$WKS, xlab = "LWAGE", ylab = "WKS")
+plot(labordata$WKS,labordata$LWAGE)
 ```
 
 ### (3)
@@ -116,7 +91,7 @@ $$wks_{i}=\beta_0+\beta_1 lwage_{i} + \beta_2 ed_{i} +\beta_3 union_{i} +\beta_4
 ### (6)
 同時OLS估計簡單迴歸和複迴歸下的勞動供給，並用stargarzer呈現估計結果（請設定type="html"）。
 
-```{r results='asis'}
+```{r,results='asis'}
 library(sandwich)
 library(lmtest)
 library(stargazer)
@@ -132,6 +107,7 @@ coeftest(BaseOls2, vcov. = vcovHC, type = "HC1") -> Multi_Ols_coeftest
 stargazer(Simple_Ols_coeftest, Multi_Ols_coeftest, type = "html")
 ```
 
+
 ### (7)
 複迴歸模型估計下，LWAGE的係數要如何詮譯？顯不顯著？
 
@@ -145,13 +121,17 @@ LWAGE的詮釋是「每當工資變動（增加）1%，每週工時會增加多�
 找出一個使複迴歸模型在控制變數下依然不符合條件性獨立的故事（必需牽扯到labordata資料不會有的變數，所以只能純文字故事）。
 
 ```
-在我們的複迴歸模型中，已經控制了教育、性別、工會三個變數，以討論薪資對於工時的效應，則在最小平方法的架構下，截距項應該已經扣除這四個變數的效果，而僅有固定的截距性質。但是在這個模型中，由於每個資料點是由特定的供給與需求所決定的，因此即便是控制了薪資，想要估計的反應變數(工時供給)仍然會受到薪資的影響
+令CRIME=1 為是否曾在獄中服刑 (0則否)。
+由於犯罪會影響個人在勞動市場的評價，因此犯罪出獄後常伴隨較低的工資；
+同時，犯罪出獄後的工作選項可能也較差，工作無法持續太久，這可能與較低的工時有關。
+所以，未考量此變數，可能使複迴歸模型不滿足條件式獨立
 
-例如在不同的總體環境下，受到景氣的影響，廠商願意購買的勞動量即願意給付的薪資會形成不同的需求線，這使得複回歸模型中，即使控制了這些變數，仍然無法使截距項與我們要探討的效應變數獨立。
+我們想建立「父母社經地位」這個變數，以爸媽的薪資衡量，超過某個薪資水準代表其社經地位高，此變數等於一；反之等於零。
+解釋：如果身在社經地位較高的家庭，因為接收到的資源比較多，其薪資水準可能比低社經地位的人高，兩變數間有正向關係。另外如果家庭社經地位高，就比較沒有迫切的需求去賺更多錢，所以有較低的工作時數，兩變數間呈反向關係。因此若沒有放入社經地位這個變數，可能造成工資係數的低估。
 ```
 
 ## 內生性偏誤
-在(2)小題，圖形看不出明顯正斜率的勞動供給線，一個主要原因是薪資（LWAGE）與工時（WKS）是勞動供需決定的結果，因此任何影響勞動供給的因素都會影響薪資，也就是供給線的誤差項不論你放多少的變數，最後誤差項還是會改變供給線，也因此一定會影響薪資——誤差項一定會和薪資變數相關。使用複迴歸不管加多少控制變數永遠不會得到薪資係數的一致性估計，這樣的狀況我們稱為內生性偏誤（endogeneity bias）。
+在(2)小題，圖形看不出明顯正斜率的勞動供給線，一個主要原因是薪資與工時是勞動供需決定的結果，因此任何影響勞動供給的因素都會影響薪資，也就是供給線的誤差項不你放多少的變數，最後誤差項還是會改變供給線，也因此一定會影響薪資——誤差項一定會和薪資變數相關。使用複迴歸不管加多少控制變數永遠不會得到薪資係數的一致性估計，這樣的狀況我們稱為內生性偏誤（endogeneity bias）。
 
 然而內生性偏誤卻是相當容易使用工具變數解決，解決方式就是從勞動「需求」函數下手——任何影響勞動需求線的因素都會是合理的工具變數。
 
@@ -159,12 +139,11 @@ LWAGE的詮釋是「每當工資變動（增加）1%，每週工時會增加多�
 在勞動市場中，產業別不同其對勞動力的需求也不一樣。另外，不同地點的勞動需求狀況也不同。使用文字邏輯說明「產業別」、勞動者「居住地」可能是合理工具變數的理由。
 
 ```
-
 工具變數需要留意他的相關條件與排除條件。
 
-「產業別」與「薪資」具有相關性，因為產業的榮枯前景不同，自然會影響從業人員的薪水。同時，他也與「非薪資效應之每週工時」無關，理由是因為產業別，橫跨農業、製造業、服務業，不同行業的每週工時，都有長有短，並不因今天是第三級產業或某某產業就一定特別短（或長），而且也會受到淡旺季影響。
+「產業別」與「薪資」具有相關性，因為產業的榮枯前景不同，自然會影響從業人員的薪水。同時，他也與「勞動供給非薪資效應之每週工時」無關，理由是勞動者不應該因為在製作業就自發性的樂於多做事或少做事。
 
-「居住地」與「薪資」具有相關性，因為待在大城市機會比較多，產業群聚也可能較佳，自然薪水是水漲船高。同時，他也與「非薪資效應之每週工時」無關，理由是因為我住哪裡，都有可能工作時間長，也有可能工作時間短，兩者應該沒有關係。
+「居住地」與「薪資」具有相關性，因為待在大城市機會比較多，產業群聚也可能較佳，自然薪水是水漲船高。同時，他也與「勞動供給非薪資效應之每週工時」無關，理由是因為不太可能住在都市勞動者就自然會很愛工作。
 
 ```
 
@@ -193,7 +172,7 @@ summary(tsls_1iv, vcov = sandwich, diagnostics = TRUE, df=Inf) -> tsls_1iv_tests
 tsls_1iv_tests
 ```
 
-### (11) 
+### (11)
 使用工具變數法, 同時使用ind及smsa當工具變數，估計複迴歸模型下的$\beta_1$係數，並進行工具變數合理性的相關檢定。
 
 ```{r 建立第二個IV模型}
@@ -227,6 +206,7 @@ stargazer(Simple_Ols_coeftest, Multi_Ols_coeftest, tsls_1iv, tsls_2iv, type = "h
 ```
 
 
+
 # 文章閱讀
 以下問題請依《經濟學人》文章來回答：
 [Forcing employers to reveal their gender pay gaps is making them think](https://www.economist.com/news/britain/21739993-despite-its-flaws-new-obligation-could-spark-change-employment-practices-forcing)
@@ -236,48 +216,47 @@ stargazer(Simple_Ols_coeftest, Multi_Ols_coeftest, tsls_1iv, tsls_2iv, type = "h
 ### (13)
 文章問的因果效應問句是什麼？（盡量一言以敝之）
 
+這篇文章包含以下兩個面向討論
+（一）
+```
+性別是否真的是造成薪資差異的變數。
+```
+（二）
 ```
 「性別」是否會影響「勞動者在職場上的長期發展機會」
 
 What companies really need to find out is whether they are hiring equitably, paying equitably and are offering equitable opportunities to advance.
 ```
 
-### (14)
+### (14) 
 找出文章中所列舉可造成OVB（omitted variable bias）的應控制變數，並說明它會造成OVB的「兩」面向原因（缺一不可）。
 
+對（一）：
 ```
-the new report is not about the pay discrimination in same job. It is about the problem that fail to promote enough women (or in a equal way)
+(1)	花多少時間照顧家人
+造成選擇性偏誤原因：花多少時間照顧家人和性別有關，因為多數情況下，女性更多地承擔
+家內照顧的角色；花多少時間照顧家人同時和薪資有關，因為工時會相應減少，影響了員工
+的職涯發展，進而影響薪資。
 
-1. 不同工作職稱（the different roles of employees)
+(2) 全職或兼職
+造成選擇性偏誤原因：全職或兼職和性別有關，因為女性兼職工作率高於男性(基於家內照顧
+責任，產業特性，等等)；全職或兼職也和薪資有關，因為同類型的兼職工作，工時往往不如
+全職，薪資自然也低於全職。
 
-在這份報導中，CEO和行政秘書是一起比較的，同理也是跟業務經理一起比。
+(3) 職業別
+造成選擇性偏誤原因：職業別和性別有關，因為男女性不是平均分布在各職業和職級中，例如
+文章提到機長薪資和空服員薪資有明顯落差，而後者以女性居多。職業別也和薪資有關，因為
+不同職業有不同的勞動供需。熱門產業和替代性低的產業往往薪資較高，低技術和替代性高的
+產業往往薪資較低。
+```
 
-「不同工作職稱」和「勞動者在職場上的長期發展機會」有關聯，因為CEO人脈與專業經歷是比較廣的，擁有較多資源可以運用，甚至機會會自己找上門。而行政職的秘書比較算是小螺絲釘，需要努力讓別人看見才會有機會。職位高階與長期發展機會應為正相關。
-
-「不同工作職稱」與「性別」有關係，理由是因為男性與女性，基於演化而根深蒂固的基因，男性普遍較有追求冒險衝刺的精神，女性則是較具有細心、耐心的特質。因此不同的的工作職稱（內容）有些是男性天生就比較容易適應良好，可能像業務，因此他變成業務經理。有些女性天生就比較容易上手，像是人資或者心理諮商輔導，因此他變成人資長(CHO)。
-
-所以「不同工作職稱（the different roles of employees)」需要被列為應控制變數，以避免估計偏誤，甚至反而在測量「擔任什麼樣的職位對長期的發展機會較多」
-
-2. 所屬產業環境 (Industry)
-
-在這份報導中提到航空業女性空服員（cabin crew）佔了69%，薪水平均25000英鎊。而機艙駕駛有94%是男性，平均薪水92400英鎊。
-這需要考量到產業特性以及產業環境，不能單純說這有pay discrimination
-
-「所屬產業環境」和「性別」會有關聯，因為有些高危險產業，基本上比較不會有女性願意投入。
-
-「所屬產業環境」也和「勞動者在職場上的長期發展機會」有關聯，產業大環境的榮枯會影響勞動者在這個產業的發展是無庸置疑的，舉裡來說，一個高危險產業（好比台電修電工），隨著機器人技術的成熟，可能之後都是機器人來做維修，自然修電工就會失業。
-
-因此需要將「所屬產業環境（Industry）」納入控制，不然嚴重的話，反而會是在觀察「哪個產業的前景較佳，長期發展機會較多」
-
-3. 養育小孩個數（childbearing)
+對（二）
+```
+養育小孩個數（childbearing)
 
 報導中提到男性和女性在到了適合養育小孩的年齡階段，薪水會開始產生落差，到了50歲可能高達16%。又被稱為"motherhood penalty"。畢竟母親經過懷孕到分娩，對於小孩子的牽絆和情感，相對於父親，是很可能比較高的。
 
 「養育孩子個數」與「性別」會產生關聯，理由是基於演化而根深蒂固的基因，男性會傾向以提高子嗣的個數來提高繁衍後代的成功率，女性則是傾向把單一子嗣照顧好來提高繁衍後代的成功率。
 
 「養育孩子個數」與「勞動者在職場上的長期發展機會」會產生關聯，是因為若有了孩子，就比較不容易接受外派的工作，面對一些職場機會必須要捨棄。但是也可能有了孩子，定居在某個地區後，上司覺得他比較穩定不會跑走，願意投入資源栽培他，反而步步高升。兩者有關聯，但是強度與正負相關可能要case by case。
-
-因此需要將「養育小孩個數（childbearing)」納入控制，否則嚴重的話，反而會是在觀察「養育孩子對勞動者長期發展的機會影響」
-（此變數本身為dummy variable : 0 1 2 3 4  代表有養育幾個孩子）
-
 ```
