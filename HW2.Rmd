@@ -116,7 +116,7 @@ $$wks_{i}=\beta_0+\beta_1 lwage_{i} + \beta_2 ed_{i} +\beta_3 union_{i} +\beta_4
 ### (6)
 同時OLS估計簡單迴歸和複迴歸下的勞動供給，並用stargarzer呈現估計結果（請設定type="html"）。
 
-```{r results='asis'}
+```{r, results='asis'}
 library(sandwich)
 library(lmtest)
 library(stargazer)
@@ -171,7 +171,7 @@ LWAGE的詮釋是「每當工資變動（增加）1%，每週工時會增加多�
 ### (10)
 使用工具變數法及產業別（ind）當工具變數，估計複迴歸模型下的$\beta_1$係數，並進行工具變數合理性的相關檢定。
 
-```{r results='asis'}
+```{r, results='asis'}
 stargazer(Simple_Ols_coeftest, Multi_Ols_coeftest, type = "html")
 ```
 
