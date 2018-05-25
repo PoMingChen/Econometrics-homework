@@ -111,7 +111,7 @@ wage1 %>%
 boxplot(wage1$educ ~ wage1$smsa, xlab="smsa", ylab="educ")
 
 wage1 %>% group_by(smsa) %>%
-  summarise(mean(educ,na.rm=T),sd(educ,na.rm=T))
+  summarise(mean(educ,na.rm=T),sd(educ,na.rm=T), sample_size=n())
 ```
 
 另一個可能的變因是性別，從盒形圖及其迴歸分析果可以看出，女性平均而言較男性的教育年限少了0.471年，

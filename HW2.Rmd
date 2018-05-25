@@ -129,6 +129,8 @@ BaseOls2 <- lm(BaseModel2, data = labordata)
 coeftest(BaseOls1, vcov. = vcovHC, type = "HC1") -> Simple_Ols_coeftest
 coeftest(BaseOls2, vcov. = vcovHC, type = "HC1") -> Multi_Ols_coeftest
 
+Simple_Ols_coeftest
+
 stargazer(Simple_Ols_coeftest, Multi_Ols_coeftest, type = "html")
 ```
 
@@ -215,7 +217,7 @@ tsls_2iv_tests
 ### (12)
 將簡單迴歸、複迴歸、一個工具變數、二個工具變數的四種估算結果（含應有的檢定），用stargazer產生「一張」報表同時呈現（請設定type="html"）。
 
-```{r results='asis'}
+```{r, results='asis'}
 stargazer(Simple_Ols_coeftest, Multi_Ols_coeftest, tsls_1iv, tsls_2iv, type = "html",
           column.labels = c("Simple OLS", "Multi OLS", "one IV", "two IV"),
           add.lines = list(c("TSLS tests pvalue","","","",""),
