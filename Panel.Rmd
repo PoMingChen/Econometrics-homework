@@ -1,0 +1,88 @@
+---
+title: "Panel"
+author: "陳柏銘"
+date: "2018/6/20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(magrittr)
+```
+
+```{r}
+library(readr)
+fatality <- read_csv("https://raw.githubusercontent.com/tpemartin/Econometric-Analysis/master/Part%20II/fatality.csv")
+```
+
+```{r}
+#檢查資料，一次看全部的資料屬性
+fatality %>% summarise_all(funs(class))
+```
+
+```{r}
+library(plm)
+```
+
+```{r}
+#串列內就是要設定（把誰）轉換成panel
+fatality<-pdata.frame(fatality,c("state","year"))
+# fatality %>% select(state)
+```
+
+```{r}
+#各州啤酒稅（beertax）與車禍死亡率（mrall）
+#In function formula. There it is used to inhibit the interpretation of operators such as "+", "-", "*" and "^" as formula operators, so they are used as arithmetical operators.
+
+
+library(ggplot2)
+fatality %>% 
+  ggplot()+
+  geom_point(aes(x=beertax,y=I(mrall*1000)))
+
+#I() is to keep as the function is 
+```
+
+```{r}
+#不同州，用不同顏色
+fatality %>% 
+  ggplot()+
+  geom_point(aes(x=beertax,y=I(mrall*1000),color=state))
+```
+
+```{r}
+#不同年，用不同顏色
+fatality %>% 
+  ggplot()+
+  geom_point(aes(x=beertax,y=I(mrall*1000),color=year))
+```
+
+```{r}
+#進行組內差異調整，做Demean
+fatality %>% 
+  group_by(state) %>% #依state分組進行以下程序：
+  mutate(
+    mrall_demean=mrall-mean(mrall),
+    beertax_demean=beertax-mean(beertax)
+    ) %>%
+  select(mrall_demean,beertax_demean) %>%
+  ungroup() -> demean_results # grouping variable會被保留，縱使看起來沒變化。
+demean_results
+```
+
+```{r}
+fatality %>% lm(data=., mrall~factor(state)) -> results
+results$residuals
+# results$residuals 也會是demean(mrall_mean)的結果
+```
+
+```{r}
+#設定模型架構
+model<-mrall~beertax
+```
+
