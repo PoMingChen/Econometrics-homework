@@ -86,3 +86,36 @@ results$residuals
 model<-mrall~beertax
 ```
 
+```{r}
+#迴歸模型
+#普通OLS model，用pooling的這個設定
+pool1<-plm(model, data=fatality, model='pooling')
+summary(pool1)
+#你可以看到beertax的係數是正的。那這樣不太合理。
+```
+
+```{r}
+re1<-plm(model, data=fatality, model='random')
+summary(re1)
+```
+
+```{r}
+#model = "within"，就是組內最小平方法。
+#individual，就是一個固定效果模型（州），twoways，就是兩個固定效果模型
+fe1<-plm(model, data=fatality, model='within', effect='individual')
+summary(fe1)
+```
+
+```{r}
+# effect = "twoways" allows to test for residual cross-sectional dependence after the introduction of
+# time fixed effects to account for common shocks.
+fe2<-plm(model, data=fatality, model='within', effect='twoways')
+summary(fe2)
+```
+
+```{r}
+library(stargazer)
+stargazer(pool1,re1,fe1,fe2,type='text',
+          column.labels = c("Pooled OLS","RE","FE-individual","FE-two-ways"))
+```
+
