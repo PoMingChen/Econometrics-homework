@@ -1,0 +1,156 @@
+---
+title: "2018 數量方法（一）期末考練習題"
+output:
+  html_document:
+    df_print: paged
+  html_notebook:
+    code_folding: none
+---
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(magrittr)
+library(plm)
+```
+
+
+***
+# 第一大題：閱讀與數學
+我們想了解「閱讀能力對數學學習成效是否有幫助」，學者搜集了來自不同學校學生的資料存在gpw.csv檔中。
+
+##1.{-}
+考慮如下的學校固定效果模型：
+$$math_{it}=c_i+\beta_1 reading_{it}+\beta_2 pre\_math_{it}+\beta_3 teacher\_exp_{it}+\epsilon_{it},$$
+其中下標it表示資料來自第i個學校的第t個學生。利用student_id變數當做t下標的判斷變數，school_id為i下標的判斷變數，宣告gpw成為一個pdata.frame.
+
+```{r}
+library(readr)
+gpw <- read_csv("gpw.csv")
+gpw<-pdata.frame(gpw,c("school_id","student_id"))
+```
+
+##2.{-}
+分別使用pooled OLS, 隨機效果模型，及固定效果模型估計上題的迴歸式，並分別把三種估計結果分別存成poolOLS1, RE1, 及FE1 三個物件。
+
+```{r}
+f1<-math~reading+pre_math+teacher_exp
+
+poolOLS1<-plm(f1, data=gpw, model='pooling')
+
+RE1<-plm(f1, data=gpw, model="random")
+
+FE1<-plm(f1, data=gpw, model='within', effect='individual')
+```
+
+
+##3.{-}
+假設pooled OLS可使用下，請檢驗是否存學校效果來合理化使用隨機效果模型的使用？
+
+> 這例得使用異質變異檢定，這學期沒有教，所以跳過。
+
+
+##4.{-}
+pooled OLS在這資料裡可以使用嗎？請進行相關檢定。
+
+```{r}
+phtest(FE1,RE1)
+```
+
+```
+H0: 學校固定效果與解釋變數無關（可用pooled OLS）
+檢定結果不拒絕H0, 故可以使用。
+```
+
+
+# 第二大題：Difference-in-Differences
+在網路音樂還不發達時，大眾聽音樂習慣是透過CD。第一個網路音樂下載服務是1999年出現的Napster P2P音樂檔案分享，它允許使用者把CD轉出來的音樂檔免費讓其他使用者下載。Napster出現後一直爭議不斷，有人說它會造成音樂出版商的收入降低；也有人說當音樂散佈越容易時，會產生廣告效果而增加出版商收入。我們接下來就是要分析：Napster的出現是否會增加家戶使用者在CD音樂購買上的支出。
+
+我們所使用的資料napster.csv含蓋1998及2000兩年，變數cdall代表CD音樂購買支出（以下簡稱音樂支出），nint代表有使用網路的虛擬變數（1表示有網路），year為資料年份（只有1998與2000年兩年)。由於我們無法得知使用者是否有用Napster，但要使用它一定要有網路，且必需是在1998年之後。  
+
+一個直覺上的比較是針對Napster已經存在的2000年，單純比較有網路的(nint=1)與沒網路(nint=0)的人之間音樂支出差異，因為只有有網路的人才可能受到Napster影響。經由計算：
+
+##5.{-}
+2000年，有網路與沒網路的人平均花費分別為多少？如果把它都歸因於Napster效果，表示Napster的出現使得音樂出版商的收入減少或增加 。
+
+```{r}
+napster <- read_csv("napster.csv")
+napster %>% 
+  filter(year==2000) %>%
+  group_by(nint) %>%
+  summarise(mean.cd=mean(cdall)) -> y2000
+y2000
+```
+```
+有網路的比沒網路的CD支出少了約9.29元（18.105442-8.810825），Napster使CD支出減少。
+```
+
+##6.{-}
+然而這個比較忽略了立足點的不平等，有網路的人有可能是不愛聽音樂的一群人，掛網對他們的效用比聽音樂高，在這種情況下，單純兩者相比會高估？還是低估Napster的效果，表示Napster對音樂花費的影響應該比前述金額來的更大或更小？
+
+```
+高估，Napster的影響要比9.29少。
+```
+
+##7.{-}
+一種去除立足點不平等的方式是，先看兩群人在1998年的平均消費支出差異為多少。由於當時Napster還沒出現，這兩群人的差異多少反應了一開始兩群人立足點的差異。經由計算，在1998年，有網路的人平均音樂花費比沒網路的人平均花費高出多少？若把這部份的立足點差異從2000年的差異扣掉，我們得到的Napster效果為多少？表示Napster的出現會增加或 減少音樂銷售? 
+
+```{r}
+napster %>% 
+  filter(year %in% c(1998,2000)) %>%
+  group_by(year,nint) %>%
+  summarise(mean.cd=mean(cdall)) -> yall
+yall
+```
+
+```
+1998年有網路比沒網路少花約14.98(=25.603547-10.625911), 故去除此立足點差異，Napster出現反而使CD花費上升約5.68(=14.97764-9.294617)
+```
+
+以上分析也可以用一條如下的迴歸式來估計：  
+$$ cdall_{ist}=\delta T_{st} +\beta_0+\beta_1 Y2000_t+\beta_2 nint_{s}+\epsilon_{ist},$$  
+其中$s$代表有網路的實驗組與無網路對照組，虛擬變數$nint_s=1$若該資料屬有組路的實驗組；$t$為年份，虛擬變數$Y2000_t=1$若該資料屬2000年資料；虛擬變數$T_{st}=1$，代表該資料有受到Naspter效果影響（得自行產生此變數）。這裡參數$\delta$即為DiD要估計的參數。
+
+##8.{-}
+接下來請使用迴歸方式來估算DiD效果，並檢定其顯著度。  
+
+```{r}
+napster %>%
+  lm(cdall~factor(nint)*factor((year==2000)),data = .)->DD_result
+```
+
+```{r}
+library(clubSandwich)
+napster %>% 
+  mutate(cluster=factor(nint):factor((year==2000))) -> napster2
+```
+
+<strong style="color:tomato">這部份會跑很久，因為DD_result很大。</strong>
+```{r, eval=FALSE}
+coef_test(DD_result, vcov = "CR2", cluster = napster2$cluster)
+```
+$\hat{\delta}$=5.68, SE=4.29e-14，在5%顯著度下顯著。
+
+# 第三大題：觀念題。
+
+##9.{-}
+說明間斷選擇模型在計算邊際效果時要注意什麼？又邊際效果的計算通常有兩個種算法，試簡述之。
+
+```
+見講義9.5節
+```
+
+##10.{-}
+說明Multinomial Probit比起Multinomial Logit放寬了什麼假設。
+
+```
+選擇間的效用誤差項可以有關連。
+```
+
+
+##11.{-}
+在不可排序多項選擇下，不同類型係數的估計認定程度為何？請說明。
+
+```
+見11.2.3
+```
