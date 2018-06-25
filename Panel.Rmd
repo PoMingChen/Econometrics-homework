@@ -119,3 +119,9 @@ stargazer(pool1,re1,fe1,fe2,type='text',
           column.labels = c("Pooled OLS","RE","FE-individual","FE-two-ways"))
 ```
 
+```{r}
+#Hausman test
+#隨機效果模型中的，固定效果是否與解釋變數有關
+phtest(fe1,re1)
+```
+
