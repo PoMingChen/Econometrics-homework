@@ -1,0 +1,153 @@
+---
+title: "Multinomial"
+author: "陳柏銘"
+date: "2018/6/25"
+output: html_document
+---
+
+### 多元可以排序
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(MASS)
+data.set2<-read.csv("https://bookdown.org/tpemartin/econometric_analysis/data/German_Health_Care_Utilization.csv")
+```
+
+```{r}
+data.set2
+```
+
+```{r}
+data.set2$hsat<-as.ordered(data.set2$hsat)
+```
+
+```{r}
+data.set2
+```
+
+```{r}
+o.logit<-polr(hsat~age+hhninc+hhkids+educ+married+working,
+     data.set2,method="logistic")
+```
+
+```{r}
+#引入pseudo-R^2需要的套件
+#分別做logit
+library(pscl)
+pR2(o.logit) #看pseudo-R^2
+hitmiss(o.logit) #計算預測精準度
+summary(o.logit)
+```
+
+```{r}
+#分別做probit
+o.probit<-polr(hsat~age+married,
+               data.set2,method='probit')
+pR2(o.probit)
+hitmiss(o.probit)
+summary(o.probit)
+```
+
+### 多元不可排序
+```{r}
+library(mlogit)
+library(AER)
+```
+
+```{r}
+#wide shape的資料型態，所以shape就是要下wide
+#每一行是一筆個人資料，其中一個變數載明選擇結果。
+data("Fishing", package = "mlogit")
+head(Fishing)
+Fishing
+```
+
+```{r}
+#wide shape的資料型態，所以shape就是要下wide
+#wide shape：there is one row for each choice situation
+#每一行是一筆個人資料，其中一個變數載明選擇結果。是"mode"那行。
+Fish <- mlogit.data(Fishing, shape="wide", varying=2:9, choice="mode")
+Fish
+```
+
+```{r}
+#Long shape: there is one row for each alternative and, therefore, as
+#many rows as there are alternatives for each choice situation.
+#每一行是一個人在一個選項下的選擇結果及相關特徵。
+#在這邊，一行是叫做choice的變數，一行是叫做mode的變數。
+data("TravelMode", package = "AER")
+head(TravelMode)
+TravelMode
+```
+
+```{r}
+# long shape, the choice is recoceded in variable "choice", alternative variables is "mode"
+TM <- mlogit.data(TravelMode, shape = "long", choice = "choice", alt.var = "mode")
+TM
+#用mlogit.data這個函數就是要轉成分析多元選擇模型的資料型態
+```
+
+#### Multinomial logit
+```{r}
+# seven different forumula
+#mFormula，Model formula for logit models
+f <- mFormula(choice ~ vcost | income + size | travel)
+f2 <- mFormula(choice ~ vcost + travel | income + size)
+f3 <- mFormula(choice ~ 0 | income)
+f4 <- mFormula(choice ~ vcost + travel)
+f5 <- mFormula(choice ~ vcost | 0 | travel)
+f6 <- mFormula(choice ~ vcost | income + 0 | travel)
+f7 <- mFormula(choice ~ 0 | income -1 | travel)
+```
+
+```{r}
+ml.TM <- mlogit(f, TM) #這邊應該說是data = TM
+ml.TM
+coeftest(ml.TM)
+```
+
+```{r}
+vcov(ml.TM)->vcov.TM #利用vcov()取出所有係數的共變異矩陣
+vcov.TM
+#再取出其中屬於我們要的係數的共變異矩陣
+vcov.TM[c("vcost","air:travel"),c("vcost","air:travel")]->V
+V
+```
+
+```{r}
+#進行delta method去計算standard error
+delta_air<-ml.TM$coefficients["air:travel"]
+beta<-ml.TM$coefficients["vcost"]
+
+g<-delta_air/beta
+dg<-matrix(c(-delta_air/(beta^2),1/beta),2,1)
+```
+
+```{r}
+# 計算Variance公式
+Vnew<-t(dg) %*% V %*% dg #t()，是指transpose的意思
+SE_g<-sqrt(Vnew) # sqrt(x) computes the (principal) square root of x, √{x} 計算主對角線的和。
+SE_g
+```
+
+#### Multinomial Probit
+```{r}
+ml.TM_probit <- mlogit(f7, TM,
+                       probit=TRUE)
+summary(ml.TM_probit)
+```
+
+```{r}
+#只分析部分選項
+ml.TM_probit2 <- mlogit(f7, TM,
+                       probit=TRUE,
+                       alt.subset = c("train","bus","car"))
+summary(ml.TM_probit2)
+```
+
+```{r}
+ml.TM_probit2$omega$train
+```
+
