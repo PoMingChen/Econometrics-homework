@@ -1,0 +1,130 @@
+---
+title: "Binary"
+author: "陳柏銘"
+date: "2018/6/25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### 引入資料
+```{r}
+# rm(list=ls())
+library(dplyr)
+library(ggplot2)
+
+data.set <- read.csv("https://bookdown.org/tpemartin/econometric_analysis/data/Spector_and_Mazzeo_1980.csv")
+```
+
+```{r}
+# Grade - binary variable indicating whether or not a student’s grade improved. 1 indicates an improvement.
+# TUCE - Test score on economics test
+# PSI - participation in program
+# GPA - Student’s grade point average
+data.set
+```
+
+### 初步資料觀察
+```{r}
+#將PSI與GRADE改成factor class
+library(magrittr)
+data.set$PSI %<>% factor()
+data.set$GRADE %<>% factor()
+```
+
+```{r}
+#table() uses the cross-classifying factors to build a contingency table of the counts at each combination of factor levels.
+data.set %>%  dplyr::select(PSI,GRADE) %>%
+  table() -> tb1
+tb1
+```
+
+```{r}
+# The default is to sum over all margins in the table
+# tb1 %>% addmargins(margin = 1)，then we will have margin on row_side
+# tb1 %>% addmargins(margin = 2)，then we will have margin on column_side
+# tb1 %>% addmargins()，then we will have the default on the all margins. It will be row & column side
+# tb1 %>% addmargins(margin=c(1,2))，這方法也是沒問題的。
+tb1 %>% addmargins(margin = 2)
+```
+
+```{r}
+tb1 %>% prop.table(margin=1) %>% # row 為條件狀況 (也就是以是否參加補救教學為條件)
+  addmargins(margin=2) # 增加一個 column margin
+
+#已有參加補救教學的條件來看，有將近60%的學生，成績會獲得改善
+```
+
+```{r}
+tb1 %>% prop.table(margin=2) %>% # column 為條件狀況
+  addmargins(margin=1) # 增加一個 row margin
+
+#成績有進步的人，其中有70%的人有參與補救教學。
+```
+
+### 模型估計
+```{r}
+#logit
+Logit<-glm(GRADE~GPA+TUCE+PSI,data=data.set,family=binomial(link='logit'))
+```
+
+```{r}
+#profit
+Probit<-glm(GRADE~GPA+TUCE+PSI,data=data.set,family=binomial(link='probit'))
+```
+
+### 配適度
+```{r}
+#用pscl套件，計算(McFadden)Pseudo-R^2 
+library(pscl)
+pR2(Logit)->R2.result
+R2.result
+#(McFadden)Pseudo-R^2 = 0.374
+```
+
+```{r}
+pR2(Probit)
+#(McFadden)Pseudo-R^2 = 0.377
+```
+
+### 計算預測準確率
+> Null Model: 沒有帶解釋變數的模型
+
+```{r}
+#計算預測準確率
+#Table of Actual Outcomes against Predicted Outcomes for discrete data models
+hitmiss(Logit) 
+```
+
+```{r}
+hitmiss(Probit)
+```
+
+### 邊際效果
+```{r}
+#package mfx : Marginal Effects, Odds Ratios and Incidence Rate Ratios for GLMs 
+#Marginal effects for a logit regression.
+#default marginal effects represent the partial effects for the average observation.(就是(代表性個人的意思))
+#If atmean = FALSE the function calculates average partial effects. (原則上at.mean這個參數就是T)
+library(mfx)
+logitmfx(Logit,data.set,atmean=T)-> result.atmean #計算'代表性個人'邊際效果
+
+result.atmean
+```
+
+```{r}
+#一樣是計算“代表性個人”的邊際效果，但是是probit function
+probitmfx(Probit,data.set)
+```
+
+##### 計算全體邊際效果平均
+```{r}
+logitmfx(Logit,data.set,atmean=FALSE) #計算全體邊際效果的平均(in logit)
+```
+
+```{r}
+probitmfx(Probit,data.set,atmean=FALSE) #計算全體邊際效果的平均(in profit)
+```
+
