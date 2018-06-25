@@ -1,0 +1,29 @@
+---
+title: "DiD"
+author: "陳柏銘"
+date: "2018/6/25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+```
+
+```{r}
+load(url("https://github.com/tpemartin/Econometric-Analysis/blob/master/data/public.rda?raw=true"))
+```
+
+```{r}
+public %>%
+  mutate_at(
+    vars(EMPFT,EMPPT,EMPFT2,EMPPT2),
+    funs(as.numeric)
+    ) -> public  
+```
+
