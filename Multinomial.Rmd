@@ -51,6 +51,7 @@ summary(o.probit)
 ```
 
 ### 多元不可排序
+#### 兩種常見的資料格式(wide/long)
 ```{r}
 library(mlogit)
 library(AER)
@@ -68,6 +69,7 @@ Fishing
 #wide shape的資料型態，所以shape就是要下wide
 #wide shape：there is one row for each choice situation
 #每一行是一筆個人資料，其中一個變數載明選擇結果。是"mode"那行。
+#mlogit.data() 這個函數會將資料轉成long的那個模式。
 Fish <- mlogit.data(Fishing, shape="wide", varying=2:9, choice="mode")
 Fish
 ```
@@ -84,6 +86,8 @@ TravelMode
 
 ```{r}
 # long shape, the choice is recoceded in variable "choice", alternative variables is "mode"
+# "shape" "choice" are still the argument in mandatory
+#原則上，在做分析前，shape都需要轉成long
 TM <- mlogit.data(TravelMode, shape = "long", choice = "choice", alt.var = "mode")
 TM
 #用mlogit.data這個函數就是要轉成分析多元選擇模型的資料型態
@@ -93,6 +97,7 @@ TM
 ```{r}
 # seven different forumula
 #mFormula，Model formula for logit models
+#只有B區的individual specific variabls 會有intercept。是老師講義的alpha_i - alpha_j，那截據項可以透過設定將其去除。
 f <- mFormula(choice ~ vcost | income + size | travel)
 f2 <- mFormula(choice ~ vcost + travel | income + size)
 f3 <- mFormula(choice ~ 0 | income)
