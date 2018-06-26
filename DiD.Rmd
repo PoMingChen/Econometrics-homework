@@ -91,16 +91,117 @@ EMFT
 
 ```{r}
 #當filter條件會套用在某個變數(這裡的STATE)的所有狀況時，可以用group_by()一次做完。你會怎麼改寫上述程式？
-employment_FTchange %>% 
-  group_by(STATE) %>% 
-  gather(type, employment, -STATE) %>%
-  ungroup() -> EMFT2
-   
-EMFT2
+# employment_FTchange %>% 
+#   group_by(STATE) %>% 
+#   gather(type, employment, -STATE) %>%
+#   ungroup() -> EMFT2
+#    
+# EMFT2
 ```
 
 ```{r}
 #進入繪圖
+#group會定義那些點可以連在一起。所以STATE = 0，就會連在一起。
+EMFT
+EMFT %>% 
+  ggplot() +
+  geom_point(aes(x=type,y=employment,color=STATE))+
+  geom_line(aes(x=type,y=employment,group=STATE,color=STATE))
+#圖形的問題是，應該要before在前，after在後。
+```
 
+```{r}
+#改變資料型態，type讓他有順序。state讓他變成factor。
+EMFT %>% mutate(
+  type=ordered(type,levels=c("mFT_before","mFT_after")),
+  STATE=factor(STATE,labels=c("PA","NJ"))
+  ) -> EMFTfinal
+EMFTfinal
+```
+
+```{r}
+EMFTfinal %>% 
+  ggplot() +
+  geom_point(aes(x=type,y=employment,color=STATE))+
+  geom_line(aes(x=type,y=employment,group=STATE,color=STATE))
+#到8.4，正式完成初步資料觀察
+```
+
+### 8.5  DiD
+```{r}
+public %>% 
+  select(STATE,EMPFT,EMPFT2) %>%
+  group_by(STATE) %>%
+  gather(type,emp,-STATE) -> public2
+
+public2
+```
+
+```{r}
+#產生虛擬變數，一共三個
+public2 %>%
+  mutate(
+    STATE1=(STATE==1),
+    AFTER=(type=="EMPFT2"),
+    PolicyImpact=STATE1*AFTER
+  ) -> public2
+public2
+```
+
+```{r}
+#DD估計
+lm(emp~STATE1+AFTER+PolicyImpact,data=public2)->DD_result
+DD_result
+```
+
+```{r}
+#另一種估計：在R裡面，用x1 * x2的概念是，x1+x2+x1*x2的意思。
+#這個方法，因為時間來不及，先忽略。
+lm(emp~factor(STATE)*factor(type),data=public2)
+```
+
+### 8.6  聚類標準誤
+```{r}
+library(clubSandwich)
+```
+
+```{r}
+public2 %>% 
+  mutate(cluster=factor(STATE):factor(type)) -> public2
+public2
+```
+
+```{r}
+#vcov = "CR2"，是系統固定的即可。
+coef_test(DD_result, vcov = "CR2", cluster = public2$cluster)
+```
+
+### 8.7 Panel: fixed effect
+```{r}
+library(plm)
+```
+
+```{r}
+library(readr)
+fatality <- read_csv("https://raw.githubusercontent.com/tpemartin/Econometric-Analysis/master/Part%20II/fatality.csv")
+
+fatality
+```
+
+```{r}
+#宣告資料為Panel data frame
+fatality<-pdata.frame(fatality,c("state","year"))
+fatality
+```
+
+```{r}
+#迴歸模型
+fe1<-plm(mrall~beertax, data=fatality, model='within', effect='individual')
+summary(fe1)
+```
+
+```{r}
+#聚類標準誤(就是cluster_standard_error)
+coef_test(fe1, vcov = "CR2", cluster = fatality$state)
 ```
 
