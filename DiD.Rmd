@@ -20,10 +20,87 @@ load(url("https://github.com/tpemartin/Econometric-Analysis/blob/master/data/pub
 ```
 
 ```{r}
+#轉換資料屬性
 public %>%
   mutate_at(
-    vars(EMPFT,EMPPT,EMPFT2,EMPPT2),
+    vars(EMPFT,EMPPT,EMPFT2,EMPPT2), #
     funs(as.numeric)
     ) -> public  
+public
+```
+
+```{r}
+#計算平均員工數
+public %>% 
+  group_by(STATE) %>% # 1 if NJ; 0 if Pa
+  summarise(mFT_before=mean(EMPFT,na.rm=T),
+            mPT_before=mean(EMPPT,na.rm=T),
+            mFT_after=mean(EMPFT2,na.rm=T),
+            mPT_after=mean(EMPPT2,na.rm=T)) %>%
+  ungroup ->
+  employment_change
+employment_change
+```
+
+```{r}
+#查看全職員工數
+library(kableExtra)
+employment_change %>% 
+  select(STATE,mFT_before,mFT_after) %>%
+  kable("html")
+```
+
+```{r}
+#查看兼職員工數
+employment_change %>% 
+  select(STATE,mPT_before,mPT_after) %>%
+  kable("html")
+```
+
+#### 8.4 繪圖
+```{r}
+library(tidyr)
+```
+
+```{r}
+#只看全職員工數
+employment_FTchange <- employment_change %>%
+  select(mFT_before,mFT_after,STATE)
+
+employment_FTchange %>% kable("html")
+employment_FTchange
+```
+
+```{r}
+#利用gather，進行資料轉換
+#A selection of columns. If empty, all variables are selected. You can supply bare variable names, select all variables between x and z with x:z, exclude y with -y. 
+employment_FTchange %>% 
+  filter(STATE==0) %>%
+  gather(type,employment,-STATE) -> EMFT0
+EMFT0
+
+employment_FTchange %>% 
+  filter(STATE==1) %>%
+  gather(type,employment,-STATE) -> EMFT1
+EMFT1
+
+EMFT<-rbind(EMFT0,EMFT1)
+EMFT
+
+```
+
+```{r}
+#當filter條件會套用在某個變數(這裡的STATE)的所有狀況時，可以用group_by()一次做完。你會怎麼改寫上述程式？
+employment_FTchange %>% 
+  group_by(STATE) %>% 
+  gather(type, employment, -STATE) %>%
+  ungroup() -> EMFT2
+   
+EMFT2
+```
+
+```{r}
+#進入繪圖
+
 ```
 
