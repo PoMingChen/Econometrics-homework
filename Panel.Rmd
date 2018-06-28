@@ -71,7 +71,7 @@ fatality %>%
     beertax_demean=beertax-mean(beertax)
     ) %>%
   select(mrall_demean,beertax_demean) %>%
-  ungroup() -> demean_results # grouping variable會被保留，縱使看起來沒變化。
+  ungroup() -> demean_results # grouping variable (state)會被保留，縱使看起來沒變化。
 demean_results
 ```
 
